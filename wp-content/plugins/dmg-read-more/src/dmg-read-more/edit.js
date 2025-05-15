@@ -1,5 +1,5 @@
 import { useState, useEffect } from '@wordpress/element';
-import { ComboboxControl, PanelBody } from '@wordpress/components';
+import { ComboboxControl, PanelBody, Spinner } from '@wordpress/components';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
@@ -28,11 +28,19 @@ export default function Edit({ attributes, setAttributes }) {
 
 		const timeout = setTimeout(() => {
 			setIsLoading(true);
-			apiFetch({
-				path: `/wp/v2/posts?search=${encodeURIComponent(input)}&status=publish&per_page=20`,
-			})
+
+			const isNumeric = /^\d+$/.test(input);
+
+			const fetchPromise = isNumeric
+				? apiFetch({ path: `/wp/v2/posts/${input}` })
+					.then((post) => (post && post.id ? [post] : []))
+					.catch(() => [])
+				: apiFetch({
+					path: `/wp/v2/posts?search=${encodeURIComponent(input)}&status=publish&per_page=20`,
+				}).catch(() => []);
+
+			fetchPromise
 				.then((posts) => setSearchResults(posts))
-				.catch(() => setSearchResults([]))
 				.finally(() => setIsLoading(false));
 		}, 400);
 
@@ -59,11 +67,14 @@ export default function Edit({ attributes, setAttributes }) {
 	}
 
 	const options = displayedPosts.map((post) => ({
-		value: post.id,
+		value: post.id.toString(),
 		label: post.title.rendered || `Post #${post.id}`,
 	}));
 
 	const selectedPost = displayedPosts.find((p) => p.id === postId);
+
+	console.log('options:', options);
+	console.log('value:', String(postId || ''));
 
 	return (
 		<>
@@ -71,18 +82,15 @@ export default function Edit({ attributes, setAttributes }) {
 				<PanelBody title="Search for Content" initialOpen={true}>
 					<ComboboxControl
 						label={__('Select a Post', 'readmore')}
-						value={postId}
+						value={postId !== undefined ? postId.toString() : ''}
 						options={options}
-						onChange={
-							(value) => setAttributes(
-								{ postId: value }
-							)
-						}
+						onChange={(value) => setAttributes({ postId: parseInt(value, 10) })}
 						onFilterValueChange={
 							(value) => setInput(value)
 						}
 						disabled={isLoading}
 					/>
+					{isLoading && <Spinner />}
 				</PanelBody>
 			</InspectorControls>
 
