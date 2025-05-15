@@ -15,8 +15,10 @@ import { useBlockProps } from '@wordpress/block-editor';
  *
  * @return {Element} Element to render.
  */
-export default function save( attributes ) {
+export default function save( { attributes } ) {
 	const { postId } = attributes;
+
+	console.log(attributes);
 
 	return (
 		<p {...useBlockProps.save()} data-post-id={postId}>

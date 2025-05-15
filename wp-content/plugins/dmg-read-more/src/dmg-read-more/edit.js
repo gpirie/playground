@@ -10,27 +10,26 @@ export default function Edit({ attributes, setAttributes }) {
 	const [input, setInput] = useState('');
 	const [recentPosts, setRecentPosts] = useState([]);
 	const [searchResults, setSearchResults] = useState([]);
+	const [selectedPostData, setSelectedPostData] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
 
-	// Load recent posts on mount
+	// 🔁 Load 20 most recent posts on mount
 	useEffect(() => {
 		setIsLoading(true);
-		apiFetch({
-			path: `/wp/v2/posts?status=publish&per_page=20`,
-		})
+		apiFetch({ path: `/wp/v2/posts?status=publish&per_page=20` })
 			.then((posts) => setRecentPosts(posts))
 			.catch(() => setRecentPosts([]))
 			.finally(() => setIsLoading(false));
 	}, []);
 
-	// Debounced search on input
+	// 🔍 Debounced search on input
 	useEffect(() => {
 		if (!input) return;
 
 		const timeout = setTimeout(() => {
 			setIsLoading(true);
 			apiFetch({
-				path: `/wp/v2/posts?search=${encodeURIComponent(input)}&status=publish&per_page=100`,
+				path: `/wp/v2/posts?search=${encodeURIComponent(input)}&status=publish&per_page=20`,
 			})
 				.then((posts) => setSearchResults(posts))
 				.catch(() => setSearchResults([]))
@@ -40,8 +39,24 @@ export default function Edit({ attributes, setAttributes }) {
 		return () => clearTimeout(timeout);
 	}, [input]);
 
-	// Decide which list to show
-	const displayedPosts = input ? searchResults : recentPosts;
+	// ✅ Load the selected post if it's not already in the list
+	useEffect(() => {
+		if (!postId) return;
+
+		apiFetch({ path: `/wp/v2/posts/${postId}` })
+			.then((post) => setSelectedPostData(post))
+			.catch(() => setSelectedPostData(null));
+	}, [postId]);
+
+	// 🔗 Combine selectedPostData with current results (if missing)
+	let displayedPosts = input ? searchResults : recentPosts;
+
+	if (
+		selectedPostData &&
+		!displayedPosts.find((p) => p.id === selectedPostData.id)
+	) {
+		displayedPosts = [selectedPostData, ...displayedPosts];
+	}
 
 	const options = displayedPosts.map((post) => ({
 		value: post.id,
@@ -55,11 +70,17 @@ export default function Edit({ attributes, setAttributes }) {
 			<InspectorControls>
 				<PanelBody title="Search for Content" initialOpen={true}>
 					<ComboboxControl
-						label={__('Select a Post', 'your-textdomain')}
+						label={__('Select a Post', 'readmore')}
 						value={postId}
 						options={options}
-						onChange={(value) => setAttributes({ postId: value })}
-						onFilterValueChange={(val) => setInput(val)}
+						onChange={
+							(value) => setAttributes(
+								{ postId: value }
+							)
+						}
+						onFilterValueChange={
+							(value) => setInput(value)
+						}
 						disabled={isLoading}
 					/>
 				</PanelBody>
@@ -68,7 +89,7 @@ export default function Edit({ attributes, setAttributes }) {
 			<p {...useBlockProps()}>
 				{selectedPost
 					? `Selected: ${selectedPost.title.rendered}`
-					: __('No post selected.', 'your-textdomain')}
+					: __('No post selected.', 'readmore')}
 			</p>
 		</>
 	);
