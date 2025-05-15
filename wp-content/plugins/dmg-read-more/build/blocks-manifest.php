@@ -17,6 +17,12 @@ return array(
 			'html' => false,
 			'customClassName' => false
 		),
+		'attributes' => array(
+			'postId' => array(
+				'type' => 'number',
+				'default' => 0
+			)
+		),
 		'textdomain' => 'dmg-read-more',
 		'editorScript' => 'file:./index.js',
 		'editorStyle' => 'file:./index.css',

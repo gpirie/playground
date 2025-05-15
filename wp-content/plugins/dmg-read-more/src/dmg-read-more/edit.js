@@ -1,72 +1,74 @@
-/** Required imports */
-import { useEffect, useState } from 'react';
-const { useSelect } = wp.data;
-import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
-import {
-	PanelBody,
-	ComboboxControl
-} from '@wordpress/components';
-
-/**
- * Styles
- */
-import './editor.scss';
-
-/**
- * Retrieves the translation of text.
- *
- * @see https://developer.wordpress.org/block-editor/reference-guides/packages/packages-i18n/
- */
+import { useState, useEffect } from '@wordpress/element';
+import { ComboboxControl, PanelBody } from '@wordpress/components';
+import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import { __ } from '@wordpress/i18n';
+import apiFetch from '@wordpress/api-fetch';
 
-/**
- * The edit function describes the structure of your block in the context of the
- * editor. This represents what the editor will render when the block is used.
- *
- * @see https://developer.wordpress.org/block-editor/reference-guides/block-api/block-edit-save/#edit
- *
- * @return {Element} Element to render.
- */
-export default function Edit( { attributes, setAttributes } ) {
+export default function Edit({ attributes, setAttributes }) {
+	const { postId } = attributes;
 
-	// Get post data
-	const { posts, isResolving } = useSelect( ( select ) => {
-		const { getEntityRecords, isResolving } = select( 'core' );
+	const [input, setInput] = useState('');
+	const [recentPosts, setRecentPosts] = useState([]);
+	const [searchResults, setSearchResults] = useState([]);
+	const [isLoading, setIsLoading] = useState(false);
 
-		// Query args
-		const query = {
-			status: 'publish',
-			per_page: 10
-		};
-
-		return {
-			posts: getEntityRecords( 'postType', 'post', query ),
-			isResolving: isResolving('core', 'getEntityRecords', ['postType', 'post', query]),
-		};
-	}, [] );
-
-	let options = [];
-	if( posts ) {
-		options.push( { value: 0, label: 'Select a post' } )
-		posts.forEach( ( post ) => {
-			options.push( { value : post.id, label : post.title.rendered } )
+	// Load recent posts on mount
+	useEffect(() => {
+		setIsLoading(true);
+		apiFetch({
+			path: `/wp/v2/posts?status=publish&per_page=20`,
 		})
-	} else {
-		options.push( { value: 0, label: 'Loading...' } )
-	}
+			.then((posts) => setRecentPosts(posts))
+			.catch(() => setRecentPosts([]))
+			.finally(() => setIsLoading(false));
+	}, []);
+
+	// Debounced search on input
+	useEffect(() => {
+		if (!input) return;
+
+		const timeout = setTimeout(() => {
+			setIsLoading(true);
+			apiFetch({
+				path: `/wp/v2/posts?search=${encodeURIComponent(input)}&status=publish&per_page=100`,
+			})
+				.then((posts) => setSearchResults(posts))
+				.catch(() => setSearchResults([]))
+				.finally(() => setIsLoading(false));
+		}, 400);
+
+		return () => clearTimeout(timeout);
+	}, [input]);
+
+	// Decide which list to show
+	const displayedPosts = input ? searchResults : recentPosts;
+
+	const options = displayedPosts.map((post) => ({
+		value: post.id,
+		label: post.title.rendered || `Post #${post.id}`,
+	}));
+
+	const selectedPost = displayedPosts.find((p) => p.id === postId);
 
 	return (
 		<>
 			<InspectorControls>
-				<PanelBody title="Search for Content" initialOpen={ true }>
+				<PanelBody title="Search for Content" initialOpen={true}>
 					<ComboboxControl
-						options={ options }
+						label={__('Select a Post', 'your-textdomain')}
+						value={postId}
+						options={options}
+						onChange={(value) => setAttributes({ postId: value })}
+						onFilterValueChange={(val) => setInput(val)}
+						disabled={isLoading}
 					/>
 				</PanelBody>
 			</InspectorControls>
 
-			<p { ...useBlockProps() }>
-				{ __( 'Dmg Read More – hello from the editor!', 'dmg-read-more' ) }
+			<p {...useBlockProps()}>
+				{selectedPost
+					? `Selected: ${selectedPost.title.rendered}`
+					: __('No post selected.', 'your-textdomain')}
 			</p>
 		</>
 	);
