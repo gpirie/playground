@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 const { useSelect } = wp.data;
 import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
 import {
-	PanelBody
+	PanelBody,
+	ComboboxControl
 } from '@wordpress/components';
 
 /**
@@ -29,25 +30,38 @@ import { __ } from '@wordpress/i18n';
 export default function Edit( { attributes, setAttributes } ) {
 
 	// Get post data
-	const { posts } = useSelect( ( select ) => {
-		const { getEntityRecords } = select( 'core' );
+	const { posts, isResolving } = useSelect( ( select ) => {
+		const { getEntityRecords, isResolving } = select( 'core' );
 
 		// Query args
 		const query = {
 			status: 'publish',
-			per_page: 2
-		}
+			per_page: 10
+		};
 
 		return {
-			pages: getEntityRecords( 'postType', 'page', query ),
-		}
-	} )
+			posts: getEntityRecords( 'postType', 'post', query ),
+			isResolving: isResolving('core', 'getEntityRecords', ['postType', 'post', query]),
+		};
+	}, [] );
+
+	let options = [];
+	if( posts ) {
+		options.push( { value: 0, label: 'Select a post' } )
+		posts.forEach( ( post ) => {
+			options.push( { value : post.id, label : post.title.rendered } )
+		})
+	} else {
+		options.push( { value: 0, label: 'Loading...' } )
+	}
 
 	return (
 		<>
 			<InspectorControls>
 				<PanelBody title="Search for Content" initialOpen={ true }>
-
+					<ComboboxControl
+						options={ options }
+					/>
 				</PanelBody>
 			</InspectorControls>
 

@@ -68,26 +68,50 @@ function Edit({
 }) {
   // Get post data
   const {
-    posts
+    posts,
+    isResolving
   } = useSelect(select => {
     const {
-      getEntityRecords
+      getEntityRecords,
+      isResolving
     } = select('core');
 
     // Query args
     const query = {
       status: 'publish',
-      per_page: 2
+      per_page: 10
     };
     return {
-      pages: getEntityRecords('postType', 'page', query)
+      posts: getEntityRecords('postType', 'post', query),
+      isResolving: isResolving('core', 'getEntityRecords', ['postType', 'post', query])
     };
-  });
+  }, []);
+  let options = [];
+  if (posts) {
+    options.push({
+      value: 0,
+      label: 'Select a post'
+    });
+    posts.forEach(post => {
+      options.push({
+        value: post.id,
+        label: post.title.rendered
+      });
+    });
+  } else {
+    options.push({
+      value: 0,
+      label: 'Loading...'
+    });
+  }
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.Fragment, {
     children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_wordpress_block_editor__WEBPACK_IMPORTED_MODULE_1__.InspectorControls, {
       children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_wordpress_components__WEBPACK_IMPORTED_MODULE_2__.PanelBody, {
         title: "Search for Content",
-        initialOpen: true
+        initialOpen: true,
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_wordpress_components__WEBPACK_IMPORTED_MODULE_2__.ComboboxControl, {
+          options: options
+        })
       })
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("p", {
       ...(0,_wordpress_block_editor__WEBPACK_IMPORTED_MODULE_1__.useBlockProps)(),
