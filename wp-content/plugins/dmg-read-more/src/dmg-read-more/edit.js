@@ -5,6 +5,8 @@ import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 
 export default function Edit({ attributes, setAttributes }) {
+	const blockProps = useBlockProps({ className: 'dmg-read-more' });
+
 	const { postId } = attributes;
 
 	const [input, setInput] = useState('');
@@ -13,16 +15,16 @@ export default function Edit({ attributes, setAttributes }) {
 	const [selectedPostData, setSelectedPostData] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
 
-	// 🔁 Load 20 most recent posts on mount
+	// Load first 20 posts on mount
 	useEffect(() => {
 		setIsLoading(true);
 		apiFetch({ path: `/wp/v2/posts?status=publish&per_page=20` })
-			.then((posts) => setRecentPosts(posts))
+			.then(setRecentPosts)
 			.catch(() => setRecentPosts([]))
 			.finally(() => setIsLoading(false));
 	}, []);
 
-	// 🔍 Debounced search on input
+	// Search posts when input changes
 	useEffect(() => {
 		if (!input) return;
 
@@ -37,7 +39,9 @@ export default function Edit({ attributes, setAttributes }) {
 					.catch(() => [])
 				: apiFetch({
 					path: `/wp/v2/posts?search=${encodeURIComponent(input)}&status=publish&per_page=20`,
-				}).catch(() => []);
+				})
+					.then((posts) => posts)
+					.catch(() => []);
 
 			fetchPromise
 				.then((posts) => setSearchResults(posts))
@@ -47,34 +51,32 @@ export default function Edit({ attributes, setAttributes }) {
 		return () => clearTimeout(timeout);
 	}, [input]);
 
-	// ✅ Load the selected post if it's not already in the list
+	// Fetch post data for selected postId
 	useEffect(() => {
 		if (!postId) return;
 
 		apiFetch({ path: `/wp/v2/posts/${postId}` })
-			.then((post) => setSelectedPostData(post))
+			.then(setSelectedPostData)
 			.catch(() => setSelectedPostData(null));
 	}, [postId]);
 
-	// 🔗 Combine selectedPostData with current results (if missing)
-	let displayedPosts = input ? searchResults : recentPosts;
+	// Combine post lists
+	const getOptions = () => {
+		let list = input ? searchResults : recentPosts;
 
-	if (
-		selectedPostData &&
-		!displayedPosts.find((p) => p.id === selectedPostData.id)
-	) {
-		displayedPosts = [selectedPostData, ...displayedPosts];
-	}
+		// Include selected post if missing
+		if (selectedPostData && !list.some((p) => p.id === selectedPostData.id)) {
+			list = [selectedPostData, ...list];
+		}
 
-	const options = displayedPosts.map((post) => ({
-		value: post.id.toString(),
-		label: post.title.rendered || `Post #${post.id}`,
-	}));
+		return list.map((post) => ({
+			value: post.id.toString(),
+			label: `${post.title.rendered || `Post #${post.id}`} (ID: ${post.id})`,
+		}));
+	};
 
-	const selectedPost = displayedPosts.find((p) => p.id === postId);
-
-	console.log('options:', options);
-	console.log('value:', String(postId || ''));
+	// Only generate options once selectedPostData is loaded (or not needed)
+	const options = getOptions();
 
 	return (
 		<>
@@ -84,20 +86,32 @@ export default function Edit({ attributes, setAttributes }) {
 						label={__('Select a Post', 'readmore')}
 						value={postId !== undefined ? postId.toString() : ''}
 						options={options}
-						onChange={(value) => setAttributes({ postId: parseInt(value, 10) })}
-						onFilterValueChange={
-							(value) => setInput(value)
-						}
+						onChange={(value) => {
+							setAttributes({ postId: parseInt(value, 10) });
+						}}
+						onFilterValueChange={setInput}
 						disabled={isLoading}
+						help={__('Search for a post to add a link to. The line will be prepended with Read More: ', 'readmore')}
 					/>
 					{isLoading && <Spinner />}
 				</PanelBody>
 			</InspectorControls>
 
-			<p {...useBlockProps()}>
-				{selectedPost
-					? `Selected: ${selectedPost.title.rendered}`
-					: __('No post selected.', 'readmore')}
+			<p {...blockProps}>
+				{selectedPostData ? (
+					<>
+						Read More:{' '}
+						<a
+							className="dmg-read-more__link"
+							href={selectedPostData.link}
+							title={selectedPostData.title.rendered}
+						>
+							{selectedPostData.title.rendered}
+						</a>
+					</>
+				) : (
+					__('No post selected.', 'readmore')
+				)}
 			</p>
 		</>
 	);

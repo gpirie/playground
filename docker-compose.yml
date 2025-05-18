@@ -1,9 +1,9 @@
 services:
   wordpress:
-    image: wordpress:latest
+    image: wordpress:cli
     container_name: wordpress
     volumes:
-      - ./wp-content:/var/www/html/wp-content
+      - ./wp-content:/var/www/html
     environment:
       - WORDPRESS_DB_NAME=wordpress
       - WORDPRESS_TABLE_PREFIX=wp_
@@ -43,6 +43,14 @@ services:
     environment:
       PMA_HOST: db
       MYSQL_ROOT_PASSWORD: password
+
+  wpcli:
+    image: wordpress:cli
+    volumes:
+      - ./wp-content:/var/www/html
+    depends_on:
+      - wordpress
+    entrypoint: ["php", "-d", "memory_limit=512M", "/usr/local/bin/wp"]
 
 volumes:
   db_data:
