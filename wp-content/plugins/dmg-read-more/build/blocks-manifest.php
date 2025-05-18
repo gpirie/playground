@@ -11,7 +11,9 @@ return array(
 		'icon' => 'edit',
 		'description' => 'Search for related content and insert links to that content.',
 		'example' => array(
-			
+			'attributes' => array(
+				'postId' => 1
+			)
 		),
 		'supports' => array(
 			'html' => false,

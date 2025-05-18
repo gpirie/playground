@@ -7,7 +7,11 @@
   "category": "widgets",
   "icon": "edit",
   "description": "Search for related content and insert links to that content.",
-  "example": {},
+  "example": {
+    "attributes": {
+      "postId": 1
+    }
+  },
   "supports": {
     "html": false,
     "customClassName": false

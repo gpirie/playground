@@ -9,6 +9,13 @@
 
 	&__link {
 		border-bottom: 1px solid;
+		color: #004db3;
 		text-decoration: none;
+		transition: all .3s ease-out;
+
+		&:hover {
+			border-color: #c00;
+			color: #c00;
+		}
 	}
 }
